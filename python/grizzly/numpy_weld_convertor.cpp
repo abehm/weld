@@ -3,6 +3,8 @@
 #include "common.h"
 #include <cstdlib>
 #include <cstdio>
+#include <omp.h>
+
 using namespace std;
 
 /**
@@ -148,24 +150,62 @@ weld::vec<weld::vec<double> > numpy_to_weld_double_arr_arr(PyObject* in) {
     return t;
 }
 
+struct numpy_to_weld_char_arr_arr_args {
+    const PyArrayObject* inp;
+    uint8_t* ptr;
+    weld::vec<weld::vec<uint8_t> >* t;
+    int start;
+    int end;
+};
+
+/* Helper method used for parallelized encoder. */
+void *numpy_to_weld_char_arr_arr_helper(void* args_) {
+    struct numpy_to_weld_char_arr_arr_args* args = (struct numpy_to_weld_char_arr_arr_args*) args_;
+    uint8_t* ptr = args->ptr;
+    const PyArrayObject* inp = args->inp;
+    weld::vec<weld::vec<uint8_t> >* t = args->t;
+    for (int i = args->start; i < args->end; i++) {
+        t->ptr[i].size = (int64_t) strlen((char *) ptr);
+        t->ptr[i].ptr = (uint8_t *)(inp->data + i * inp->strides[0]);
+        ptr += (inp->strides[0]);
+    }
+}
+
 /**
  * Converts numpy array of strings to Weld vector, with ndim = 2.
  */
 extern "C"
-weld::vec<weld::vec<uint8_t> > numpy_to_weld_char_arr_arr(PyObject* in) {
+weld::vec<weld::vec<uint8_t> > numpy_to_weld_char_arr_arr(PyObject* in, int num_threads) {
     PyArrayObject* inp = (PyArrayObject*) in;
     int64_t dimension = (int64_t) PyArray_DIMS(inp)[0];
     weld::vec<weld::vec<uint8_t> > t;
     t = weld::make_vec<weld::vec<uint8_t> >(dimension);
-    uint8_t* ptr = (uint8_t *) PyArray_DATA(inp);
-    uint8_t* data = ptr;
-    for (int i = 0; i < t.size; i++) {
-        t.ptr[i].size = strlen((char *) ptr);
-        if ((int) inp->dimensions[1] < t.ptr[i].size) {
-            t.ptr[i].size = (int) inp->dimensions[1];
+    uint8_t* ptr = (uint8_t *) inp->data;
+    struct numpy_to_weld_char_arr_arr_args args[num_threads];
+    int fringe_length = t.size % num_threads;
+
+    for (int i = 0; i < num_threads; i++) {
+        args[i].inp = inp;
+        args[i].ptr = (uint8_t *) inp->data;
+        args[i].t = &t;
+        args[i].start = (t.size / num_threads) * i;
+        if (i < fringe_length) {
+            args[i].start += i;
+        } else {
+            args[i].start += fringe_length;
         }
-        t.ptr[i].ptr = (uint8_t *)(data + i * inp->strides[0]);
-        ptr += (PyArray_STRIDES(inp)[0]);
+        args[i].ptr += (args[i].start * inp->strides[0]);
+        args[i].end = (t.size / num_threads) * (i + 1);
+        if ((i+1) < fringe_length) {
+            args[i].end += (i+1);
+        } else {
+            args[i].end += fringe_length;
+        }
+    }
+
+    #pragma omp parallel for
+    for (int i = 0; i < num_threads; i++) {
+        numpy_to_weld_char_arr_arr_helper(&args[i]);
     }
 
     return t;
