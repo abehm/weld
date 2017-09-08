@@ -1,11 +1,11 @@
 CC=clang++
-LDFLAGS=-L../../../target/debug/
+LDFLAGS=-L../../../target/release/
 LIBS=-lweld
 
 .PHONY: all clean
 
 all:
-	${CC} -O3 ${LDFLAGS} ${LIBS} vector_benchmark.cpp -o run
+	${CC} -O3 -march=native ${LDFLAGS} ${LIBS} vector_benchmark.cpp -o run
 
 clean:
 	rm -rf run

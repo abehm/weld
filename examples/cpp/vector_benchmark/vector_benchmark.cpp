@@ -4,21 +4,22 @@
 
 #include <string.h>
 
+#include <math.h>
+#include <time.h>
+
 // Include the Weld API.
 #include "../../../c/weld.h"
 
 struct weld_vector {
-    int32_t *data;
+    float *data;
     int64_t length;
 };
 
 struct args {
     struct weld_vector vector;
-    int32_t a;
 };
 
-const char *program = "|x:vec[i32], a:i32| result(for(x, merger[i32,+],\
-                       |b,i,e| merge(b, e)))";
+const char *program = "|x:vec[f32]| result(for(x, appender[f32], |b,i,e| merge(b, sqrt(e))))";
 
 int main() {
     // Compile Weld module.
@@ -34,13 +35,10 @@ int main() {
     }
 
     weld_vector v;
-    const uint64_t length = 4093*10000 + 33;
-    int32_t *data = (int32_t *)malloc(sizeof(int32_t) * (length + 100));
-    for (int i = 0; i < length + 100; i++) {
-        data[i] = 1;
-        if (i >= length) {
-            data[i] = 0;
-        }
+    const uint64_t length = 100000000;
+    float *data = (float *)malloc(sizeof(float) * (length));
+    for (int i = 0; i < length; i++) {
+        data[i] = 4;
     }
 
     v.data = data;
@@ -48,21 +46,38 @@ int main() {
 
     struct args a;
     a.vector = v;
-    a.a = 10;
 
     weld_value_t arg = weld_value_new(&a);
 
     // Run the module and get the result.
     conf = weld_conf_new();
+
+    clock_t start = clock();
     weld_value_t result = weld_module_run(m, conf, arg, e);
+    clock_t end = clock();
+
+    printf("Weld Runtime: %f\n", ((double)(end - start)) / CLOCKS_PER_SEC);
+
     if (weld_error_code(e)) {
         const char *err = weld_error_message(e);
         printf("Error message: %s\n", err);
         exit(1);
     }
+
     void *result_data = weld_value_data(result);
-    printf("Answer: %d\n", *(int32_t *)result_data);
-    printf("Expect: %llu\n", length);
+    weld_vector *res = (weld_vector *)result_data;
+
+    printf("Answer: %f\n", res->data[0]);
+
+    start = clock();
+    float *cresult = (float *)malloc(sizeof(float) * (length));
+    for (int i = 0; i < length; i++) {
+        cresult[i] = sqrtf(data[i]);
+    }
+    end = clock();
+
+    printf("C Runtime: %f\n", ((double)(end - start)) / CLOCKS_PER_SEC);
+    printf("Answer: %f\n", cresult[0]);
 
     free(data);
 
