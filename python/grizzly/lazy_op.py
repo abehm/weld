@@ -44,7 +44,7 @@ class LazyOpResult:
         return len(self.evaluate())
 
 
-    def evaluate(self, verbose=True, decode=True):
+    def evaluate(self, verbose=False, decode=True):
         """Summary
 
         Args:
