@@ -20,8 +20,8 @@ requests['Incident Zip'] = requests['Incident Zip'].str.slice(0, 5)
 zero_zips = requests['Incident Zip'] == '00000'
 requests['Incident Zip'][zero_zips] = np.nan
 
-# Display unique incident zips again (this time cleaned)
-print requests['Incident Zip'].unique()
+# Display number of unique incident zips again (this time cleaned)
+print len(requests['Incident Zip'].unique())
 end = time.time()
 
 print "Total end-to-end time: %.2f" % (end - start)

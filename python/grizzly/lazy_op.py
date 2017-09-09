@@ -40,6 +40,10 @@ class LazyOpResult:
         self.weld_type = weld_type
         self.dim = dim
 
+    def __len__(self):
+        return len(self.evaluate())
+
+
     def evaluate(self, verbose=True, decode=True):
         """Summary
 
