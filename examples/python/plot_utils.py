@@ -11,7 +11,9 @@ def plot_results(times, title):
     xstart = 0.0
     ticks = []
     labels = []
-    for (scheme, time) in times.items():
+    data_sorted = sorted(times.iteritems())
+    data_sorted.reverse()
+    for (time, scheme) in data_sorted:
         plt.bar(xstart, time, label=scheme)
         labels.append(scheme)
         ticks.append(xstart)
