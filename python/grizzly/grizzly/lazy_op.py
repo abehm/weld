@@ -40,7 +40,7 @@ class LazyOpResult:
         self.weld_type = weld_type
         self.dim = dim
 
-    def evaluate(self, verbose=True, decode=True, passes=None, num_threads=1,
+    def evaluate(self, verbose=False, decode=True, passes=None, num_threads=1,
                  apply_experimental_transforms=False):
         """Summary
 

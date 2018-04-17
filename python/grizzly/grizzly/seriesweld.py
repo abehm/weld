@@ -313,6 +313,9 @@ class SeriesWeld(LazyOpResult):
             0
         )
 
+    def __len__(self):
+        return self.count().evaluate()
+
     def mask(self, predicates, new_value):
         """Summary
 
