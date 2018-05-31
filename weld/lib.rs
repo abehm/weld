@@ -108,6 +108,12 @@ extern crate lazy_static;
 #[macro_use]
 extern crate log;
 
+extern crate serde;
+extern crate toml;
+
+#[macro_use]
+extern crate serde_derive;
+
 extern crate regex;
 extern crate libc;
 extern crate env_logger;
@@ -151,6 +157,7 @@ mod exprs;
 mod expr_hash;
 mod easy_ll;
 mod stats;
+mod conf2;
 
 // Public interfaces.
 // TODO these probably shouldn't all be public...
