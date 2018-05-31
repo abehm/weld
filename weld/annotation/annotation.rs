@@ -1,5 +1,5 @@
-use std::fmt;
 
+use std::fmt;
 use std::collections::BTreeMap;
 
 /// A kind of annotation that can be set on an expression.
