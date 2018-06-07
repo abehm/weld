@@ -401,32 +401,70 @@ pub struct Expr {
     pub annotations: Annotations,
 }
 
-/// Iterator kinds in the Weld IR.
+/// A pattern used by an iterator.
+///
+/// Patterns define how data is consumed in a For loop.
+pub struct IterPattern {
+    pub start: Box<Expr>,
+    pub end: Box<Expr>,
+    pub stride: Box<Expr>,
+}
+
+/// A pattern used by an N-dimensional tensor interator.
+///
+/// Patterns define how data is consumed in a For loop. This pattern defines a _shape_, which
+/// specifies the length of a dimension, and a stride for each shape axis.
+pub struct NdIterPattern {
+    pub shape: Box<Expr>,
+    pub strides: Box<Expr>,
+}
+
+/// Iterators in the Weld IR.
 ///
 /// An iterator defines how a for loop iterates over data.
 #[derive(Clone, Debug, Eq, PartialEq, Hash)]
-pub enum IterKind {
+pub enum Iter {
     /// A standard scalar iterator.
-    ScalarIter,
+    ///
+    /// If no pattern is present, the entire data is consumed.
+    ScalarIter {
+        data: Box<Expr>,
+        pattern: Option<IterPattern>,
+    }
     /// A SIMD iterator.
     ///
     /// This iterator fetches multiple elements packed into a SIMD value per loop iteration.
-    SimdIter,
+    /// Currently, SIMD iterators do not support strided access.
+    SimdIter(data: Box<Expr>),
     /// A fringe iterator.
     ///
     /// This iterator handles the fringe of a SIMD iterator (i.e., if the number of elements in the
     /// source is not a multiple of the fixed SIMD width). The elements are processed using scalar
     /// code.
-    FringeIter,
-    /// An interator over a N-dimensional tensor.
-    NdIter,
+    FringeIter(data: Box<Expr>),
+    /// An iterator over a N-dimensional tensor.
+    ///
+    /// This iterator takes an `NdIterPattern` that specifies a length and access stride for each
+    /// dimension.
+    NdIter {
+        data: Box<Expr>,
+        pattern: NdIterPattern,
+    }
     /// An interator over a finite integer range.
-    RangeIter,
+    ///
+    /// The range is over [start, end), strided with the given stride.
+    RangeIter {
+        start: Box<Expr>,
+        end: Box<Expr>,
+        stride: Box<Expr>,
+    },
 }
 
-impl fmt::Display for IterKind {
+impl fmt::Display for Iter {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         use self::IterKind::*;
+        // TODO
+        /*
         let ref text = match *self {
             ScalarIter => "",
             SimdIter => "simd",
@@ -435,21 +473,9 @@ impl fmt::Display for IterKind {
             RangeIter => "range",
         };
         f.write_str(text)?;
+        */
         f.write_str("iter")
     }
-}
-
-/// An iterator, which specifies a vector to iterate over and optionally a start index,
-/// end index, and stride.
-#[derive(Clone, Debug, PartialEq)]
-pub struct Iter {
-    pub data: Box<Expr>,
-    pub start: Option<Box<Expr>>,
-    pub end: Option<Box<Expr>>,
-    pub stride: Option<Box<Expr>>,
-    pub kind: IterKind,
-    pub strides: Option<Box<Expr>>,
-    pub shape: Option<Box<Expr>>,
 }
 
 impl Iter {
@@ -458,8 +484,11 @@ impl Iter {
     /// An iterator is simple if it has no start/stride/end specified (i.e., it iterates over all
     /// the input data) and kind `ScalarIter`.
     pub fn is_simple(&self) -> bool {
-        return self.start.is_none() && self.end.is_none() && self.stride.is_none() &&
-            self.kind == IterKind::ScalarIter;
+        if let Some(ScalarIter(_, None))  = *self {
+            true
+        } else {
+            false
+        }
     }
 }
 
